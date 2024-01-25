@@ -13,3 +13,4 @@ simulated_data <- data.frame(year = years, month = months, total_peds = total_pe
 
 # 查看前几行数据
 head(simulated_data) 
+ 

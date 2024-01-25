@@ -15,7 +15,7 @@ process_traffic_data <- function(traffic_data) {
   filtered_data <- traffic_data %>% 
     filter(year >= 2015, year <= 2019)
   
-  
+   
   
   # 按年和月汇总数据
   summary_df <- filtered_data %>%
