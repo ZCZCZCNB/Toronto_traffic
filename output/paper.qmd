@@ -1,0 +1,225 @@
+---
+title: "The connection between pedestrians, vehicles and Toronto"
+subtitle: Impact on urban transportation in Toronto based on pedestrian-vehicle correlations"
+author: 
+  - Xutao Chen
+date: "`r format(Sys.time(), '%d %B %Y')`"
+abstract: "Pedestrian and vehicle-related data have an important impact on decisions such as transportation planning in Toronto, and their research plays an important role in everything from improving the efficiency of city operations to promoting resident well-being and environmental sustainability. This report is based on research on trends and correlations in pedestrian and vehicle counts over time to explore the current status of Toronto's transportation planning and discuss future transportation decisions. "
+toc: true
+format: pdf
+thanks: "All data and scripts available at https://github.com/ZCZCZCNB/Toronto-traffic"
+number-sections: true
+fig_caption: yes
+bibliography: reference.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+install.packages("readr")
+library(knitr)
+library(janitor)
+library(lubridate)
+library(opendatatoronto)
+library(tidyverse)
+library(tidyr)
+library(data.table)
+library(dplyr)
+library(kableExtra)
+library(ggplot2)
+library(readr)
+```
+
+# Introduction
+In Canada, more than 80% of the population lives in urban areas, with more than 57% of the population living in Canada's five largest urban areas, with Toronto being the most prosperous of the five [@cite1]. The city's complexity can be seen in Toronto's busy streets and diverse transportation system, so a standardized transportation network not only provides opportunities for socio-economic activities within Toronto, but also has important implications for sustainable urban development and residents. Quality of life is also crucial [@cite2].
+
+In recent years, with population growth and urban expansion, Toronto's traffic flow has gradually increased, and the number of pedestrians and cars is the focus [@cite2]. Therefore, accurate and detailed pedestrian and vehicle flow data will inevitably affect the construction of urban transportation planning models. These data can not only show the traffic trends in recent years, but also provide guarantee for predicting future traffic needs and planning strategies. In addition, the data can help evaluate the effectiveness of traffic rules and policies and guide new transportation infrastructure projects.
+
+This paper examines the relationship between pedestrian and vehicle flow data in Toronto by analyzing data collected between 2015 and 2019, and discusses how this data affects transportation planning and management decisions in Toronto. Because traditional transportation planning model systems estimate and calibrate in an unstructured way [@cite3], the research in this paper will focus on the correlation between data, and use ChatGPT4, a new AI technology, as an aid to discuss how to help Urban transportation planners can improve traditional model construction while promoting the sustainable development of cities and the quality of life of residents.
+
+The remainder of the paper is structured as follows: Section @Data covers the data sources and the analytically methods employed. The \@ref(discussion) section discusses the relevance and impact on planning, and finally concludes.
+
+# Data
+
+## Data Source
+This report examines pedestrian and vehicle traffic data in Toronto from January 2015 to December 2019. These travel data are published by the Government of Toronto, and the dataset was last updated in March 2023. All relevant data was obtained using the "R" package "opendatatoronto" [@citeTor].
+
+## Data collection methods
+`R` [@citeR] was the language and environment used to collect and analyze this data, also the `tidyverse` [@citeTidy], `janitor` [@citeJanitor], `dplyr` [@citeDplyr] and `kableExtra` [ @citeKableExtra] packages. 
+
+Please note that these data include more than just pedestrian and car traffic, and some data are missing. So my workflow starts by extracting the year and month, and then for each year and month, calculate the sum of the number of various traffic participants such as pedestrians and cars. The result was saved to `clean_traffic_data.csv`.
+
+Finally, I processed the organized data and created a new data frame, which contains the total number of pedestrians, cars and other traffic participants for each year and month combination. I save it in `toronto_traffic_10.csv`
+
+
+## Data Characteristics
+
+The cleaned and calculated dataset showing the total number of pedestrians and vehicles per year can be seen in the table below \@ref(table1). The dataset shows the total number of pedestrians and vehicles respectively for each year from 2015 to 2019.
+
+```{r table1, echo=FALSE, message=FALSE, warning=FALSE}
+library(readr)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+traffic_data <- read_csv("inpute/data/toronto_traffic_10.csv")
+traffic_data$count_date <- as.Date(traffic_data$count_date)
+traffic_data$year <- year(traffic_data$count_date)
+
+annual_data <- traffic_data %>%
+  filter(year >= 2015, year <= 2019) %>%
+  group_by(year) %>%
+  summarise(
+    total_cars = sum(sb_cars_r + sb_cars_t + sb_cars_l + nb_cars_r + nb_cars_t + nb_cars_l + wb_cars_r + wb_cars_t + wb_cars_l + eb_cars_r + eb_cars_t + eb_cars_l, na.rm = TRUE),
+    total_peds = sum(nx_peds + sx_peds + ex_peds + wx_peds, na.rm = TRUE)
+  )
+kable(annual_data, caption = "Table 1: Annual Total Number of Pedestrians and Vehicles (2015-2019)")%>%
+  kable_styling(latex_options = c("HOLD_position"))
+```
+
+In addition, the average number of pedestrians and vehicles per month in the past few years can also be calculated through this data set, as shown in the table \@ref(table2) below .
+
+```{r table2, echo = FALSE, message = FALSE, warning = FALSE}
+traffic_data <- read_csv("inpute/data/toronto_traffic_10.csv")
+traffic_data$count_date <- as.Date(traffic_data$count_date)
+traffic_data$year <- year(traffic_data$count_date)
+traffic_data$month <- month(traffic_data$count_date)
+
+# 筛选2015年至2019年的数据并按月汇总计算平均值
+monthly_avg_data <- traffic_data %>%
+  filter(year >= 2015, year <= 2019) %>%
+  group_by(month) %>%
+  summarise(
+    avg_cars = mean(sb_cars_r + sb_cars_t + sb_cars_l + nb_cars_r + nb_cars_t + nb_cars_l + wb_cars_r + wb_cars_t + wb_cars_l + eb_cars_r + eb_cars_t + eb_cars_l, na.rm = TRUE),
+    avg_peds = mean(nx_peds + sx_peds + ex_peds + wx_peds, na.rm = TRUE)
+  )
+# 生成每个月平均行人和车辆数量的表格
+kable(monthly_avg_data, caption = "Table 2: Monthly Average Number of Pedestrians and Vehicles (2015-2019)")%>%
+  kable_styling(latex_options = c("HOLD_position"))
+```
+
+A more intuitive data representation is the annual average of the five-year total, as shown in the table \@ref(table3) below.
+
+```{r table3, echo = FALSE, message = FALSE, warning = FALSE}
+total_sums <- annual_data %>%
+  summarise(
+    total_cars_5_years = sum(total_cars),
+    total_peds_5_years = sum(total_peds)
+  )
+
+# 计算五年的年均数
+average_totals <- total_sums %>%
+  mutate(
+    avg_cars_per_year = total_cars_5_years / 5,  # 五年平均
+    avg_peds_per_year = total_peds_5_years / 5   # 五年平均
+  )
+
+# 生成包含年均数的表格
+kable(average_totals[, c("avg_cars_per_year", "avg_peds_per_year")], 
+      caption = "Average Annual Number of Pedestrians and Vehicles Over Five Years (2015-2019)")%>%
+  kable_styling(latex_options = c("HOLD_position"))
+```
+
+\newpage
+
+# Discussion
+
+## Mean comparison
+
+Based on the above data, the histogram shown in the figure below can be obtained. It can be clearly seen that the average monthly total number of vehicles is higher than the total number of pedestrians. The monthly average of the total number of vehicles is relatively stable without excessive fluctuations. On the other hand, the average number of pedestrians changes significantly, reaching a peak in August and September and a trough in December. It is generally believed that this is due to Toronto's special weather conditions (too cold winter, etc.) [@cite4].
+
+```{r plot1,fig.pos='H', echo=FALSE,message = FALSE, warning = FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# 将数据从宽格式转换为长格式
+monthly_avg_long <- monthly_avg_data %>%
+  gather(key = "category", value = "average", avg_cars, avg_peds)
+
+# 绘制柱状图
+ggplot(monthly_avg_long, aes(x = factor(month), y = average, fill = category)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  scale_fill_manual(values = c("avg_cars" = "blue", "avg_peds" = "red")) +
+  labs(x = "Month", y = "Average Count", fill = "Category") +
+  theme_minimal() +
+  ggtitle("Monthly Average Number of Cars and Pedestrians")
+    
+```
+
+## Total comparison
+
+Although the average number of vehicles is usually much greater than the average number of pedestrians, a magical phenomenon is that the total number of pedestrians can even catch up with the total number of vehicles during some periods of time. As shown in the figure, the number of pedestrians exceeded the number of vehicles twice in 2016 and 2019. In addition, there were several similar situations in early 2015 and mid-2017. It can be seen from this that the relationship between the two data is not simple, and the correlation between them is worth thinking about.
+
+```{r plot2,fig.pos='H', echo=FALSE,message = FALSE, warning = FALSE}
+traffic_data <- read_csv("inpute/data/toronto_traffic_10.csv")
+traffic_data$count_date <- as.Date(traffic_data$count_date)
+traffic_data$year <- year(traffic_data$count_date)
+traffic_data$month <- month(traffic_data$count_date)
+
+# 筛选2015年至2019年的数据并汇总
+processed_data <- traffic_data %>%
+  filter(year >= 2015, year <= 2019) %>%
+  group_by(year, month) %>%
+  summarise(
+    total_cars = sum(sb_cars_r + sb_cars_t + sb_cars_l + nb_cars_r + nb_cars_t + nb_cars_l + wb_cars_r + wb_cars_t + wb_cars_l + eb_cars_r + eb_cars_t + eb_cars_l, na.rm = TRUE),
+    total_peds = sum(nx_peds + sx_peds + ex_peds + wx_peds, na.rm = TRUE)
+  )
+
+# 时间序列图
+ggplot(processed_data, aes(x = as.Date(paste(year, month, "1", sep = "-")))) +
+  geom_line(aes(y = total_cars, colour = "Cars")) +
+  geom_line(aes(y = total_peds, colour = "Pedestrians")) +
+  labs(title = "Monthly Traffic Counts (2015-2019)", x = "Date", y = "Count") +
+  scale_colour_manual("", values = c("Cars" = "blue", "Pedestrians" = "red"))
+```
+
+## Linear fitting
+
+When the relationship between two data needs to be considered, it is most intuitive to use scatter plots and linear fitting lines. As shown in the figure below, it can be seen from the figure that there seems to be a certain degree of positive correlation between the number of pedestrians and the number of cars. This means that, in some cases, when the number of cars increases in a given month, the number of pedestrians also increases. However, it is worth noting that this relationship is not very obvious because the data points are relatively widely distributed in the graph, which also proves that the relationship between the two data is not simple.
+
+Generally speaking, the number of pedestrians and vehicles may be related to a variety of factors, which may affect the number of pedestrians and vehicles at the same time [@cite3]. But from linear analysis, we can see that even if there are multiple factors, the relationship between the two still tends to be positive. Although such results are beneficial to transportation planning decisions, various influences still need to be paid attention to, because fluctuations in these two data are not uncommon, and the positive linear relationship is not direct.
+
+```{r plot3,fig.pos='H', echo=FALSE,message = FALSE, warning = FALSE}
+process_traffic_data <- function(traffic_data) {
+  traffic_data$count_date <- as.Date(traffic_data$count_date)
+  traffic_data$year <- year(traffic_data$count_date)
+  traffic_data$month <- month(traffic_data$count_date)
+  
+  # 筛选2015年至2019年的数据
+  filtered_data <- traffic_data %>% 
+    filter(year >= 2015, year <= 2019)
+  summary_df <- filtered_data %>%
+    group_by(year, month) %>%
+    summarise(
+      total_cars = sum(sb_cars_r + sb_cars_t + sb_cars_l + nb_cars_r + nb_cars_t + nb_cars_l + wb_cars_r + wb_cars_t + wb_cars_l + eb_cars_r + eb_cars_t + eb_cars_l, na.rm = TRUE),
+      total_peds = sum(nx_peds + sx_peds + ex_peds + wx_peds, na.rm = TRUE),
+      total_bikes = sum(nx_bike + sx_bike + ex_bike + wx_bike, na.rm = TRUE),
+      total_others = sum(nx_other + sx_other + ex_other + wx_other, na.rm = TRUE)
+    )
+}
+# 处理数据
+processed_traffic_data <- process_traffic_data(traffic_data)
+
+
+library(ggplot2)
+
+
+
+
+# 使用之前处理的数据：processed_data
+# 散点图和线性拟合线
+ggplot(processed_data, aes(x = total_cars, y = total_peds)) +
+  geom_point(alpha = 0.5) +  # 透明度设置为0.5
+  geom_smooth(method = "lm", color = "blue") +  # 添加线性拟合线
+  labs(title = "Relationship Between Monthly Car and Pedestrian Counts (2015-2019)", 
+       x = "Total Cars", y = "Total Pedestrians")
+```
+
+# Conclusion
+
+After this series of data analysis, we can conclude that the relationship between the total number and the mean of pedestrians and vehicles is not the same: the total number of pedestrians and vehicles will be affected by various factors, such as urban activities, holidays, weather changes, etc. And the fluctuations are huge. There are certain rules in the changes of the two averages. Not only that, there is also a certain linear positive correlation between the two. The results of the two different relationships are also different, but for Toronto's urban transportation planners, both conclusions are quite important. Based on these two conclusions, policymakers should first consider the overall situation when making urban planning decisions. Considering that in most cases the increase and decrease trends of pedestrians and vehicles are similar, they can be based on experience in advance at predictable time points ( Such as winter, holidays, etc.) Make preparations in advance.
+
+From another perspective, decision makers also need to be prepared to deal with emergencies. Based on multiple fluctuations in the total number and a weak linear relationship, the number of pedestrians and vehicles in Toronto can easily lead to different results than predicted. Therefore, urban transportation planners must have room to deal with unexpected situations, and even need to So that the corresponding police force can be dispatched at any time to deal with some accidents that may occur. In addition, based on the above data, some time points at which emergencies may occur can also be roughly derived. Before these special periods, decision-makers can prepare in advance to maintain traffic and protect the safety of citizens.
+
+# References
+
